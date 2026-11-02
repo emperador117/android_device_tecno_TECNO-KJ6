@@ -90,8 +90,12 @@ jobs:
         BC="${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/BoardConfig.mk"
         if [ -f "$BC" ]; then
           sed -i 's/^BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true/# & (quitado: choca con RECOVERY_AS_BOOT)/' "$BC"
+          # el arbol referencia TARGET_FORCE_PREBUILT_KERNEL pero nunca lo asigna -> forzarlo a true
+          if ! grep -qE '^[[:space:]]*TARGET_FORCE_PREBUILT_KERNEL[[:space:]]*:=[[:space:]]*true' "$BC"; then
+            sed -i '/ifeq.*TARGET_FORCE_PREBUILT_KERNEL.*true/i TARGET_FORCE_PREBUILT_KERNEL := true' "$BC"
+          fi
           echo "--- BoardConfig tras patch ---"
-          grep -nE "RECOVERY_AS_BOOT|INCLUDE_RECOVERY|MOVE_RECOVERY" "$BC" || true
+          grep -nE "RECOVERY_AS_BOOT|INCLUDE_RECOVERY|MOVE_RECOVERY|FORCE_PREBUILT_KERNEL|PREBUILT_KERNEL :=" "$BC" || true
         else
           echo "no existe $BC (nada que parchear)"
         fi
