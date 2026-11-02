@@ -85,6 +85,17 @@ jobs:
       run: git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
+    - name: Patch BoardConfig (recovery-as-boot vs vendor_boot)
+      run: |
+        BC="${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/BoardConfig.mk"
+        if [ -f "$BC" ]; then
+          sed -i 's/^BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true/# & (quitado: choca con RECOVERY_AS_BOOT)/' "$BC"
+          echo "--- BoardConfig tras patch ---"
+          grep -nE "RECOVERY_AS_BOOT|INCLUDE_RECOVERY|MOVE_RECOVERY" "$BC" || true
+        else
+          echo "no existe $BC (nada que parchear)"
+        fi
+
     - name: Set Swap Space
       uses: pierotofy/set-swap-space@master
       with:
