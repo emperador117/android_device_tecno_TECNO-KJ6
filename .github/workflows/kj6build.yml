@@ -89,10 +89,18 @@ jobs:
       run: |
         BC="${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/BoardConfig.mk"
         if [ -f "$BC" ]; then
-          sed -i 's/^BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true/# & (quitado: choca con RECOVERY_AS_BOOT)/' "$BC"
-          # el arbol referencia TARGET_FORCE_PREBUILT_KERNEL pero nunca lo asigna -> forzarlo a true
+          # el arbol referencia TARGET_FORCE_PREBUILT_KERNEL pero nunca lo asigna -> forzarlo a true (siempre)
           if ! grep -qE '^[[:space:]]*TARGET_FORCE_PREBUILT_KERNEL[[:space:]]*:=[[:space:]]*true' "$BC"; then
             sed -i '/ifeq.*TARGET_FORCE_PREBUILT_KERNEL.*true/i TARGET_FORCE_PREBUILT_KERNEL := true' "$BC"
+          fi
+          if [ "${{ github.event.inputs.BUILD_TARGET }}" = "vendorboot" ]; then
+            # layout real: recovery va en vendor_boot (hay boot+vendor_boot+init_boot, sin particion recovery)
+            sed -i 's/^BOARD_USES_RECOVERY_AS_BOOT := true/# & (desactivado: recovery va en vendor_boot)/' "$BC"
+            grep -qE '^[[:space:]]*BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT[[:space:]]*:=[[:space:]]*true' "$BC" || echo "BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true" >> "$BC"
+            grep -qE '^[[:space:]]*BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT[[:space:]]*:=[[:space:]]*true' "$BC" || echo "BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true" >> "$BC"
+          else
+            # recovery-as-boot: quitar la linea de vendor_boot que choca
+            sed -i 's/^BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true/# & (quitado: choca con RECOVERY_AS_BOOT)/' "$BC"
           fi
           echo "--- BoardConfig tras patch ---"
           grep -nE "RECOVERY_AS_BOOT|INCLUDE_RECOVERY|MOVE_RECOVERY|FORCE_PREBUILT_KERNEL|PREBUILT_KERNEL :=" "$BC" || true
